@@ -23,6 +23,34 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 
 var prefix = '${name}-${resourceToken}'
 
+
+var openApiDeploymentName = 'chatgpt'
+module openAi 'core/ai/cognitiveservices.bicep' = {
+  name: 'openai'
+  scope: resourceGroup
+  params: {
+    name: 'cog-${resourceToken}'
+    location: location
+    tags: tags
+    sku: {
+      name: 'S0'
+    }
+    deployments: [
+      {
+        name: openApiDeploymentName
+        model: {
+          format: 'OpenAI'
+          name: 'gpt-35-turbo'
+          version: '0301'
+        }
+        scaleSettings: {
+          scaleType: 'Standard'
+        }
+      }
+    ]
+  }
+}
+
 module web 'core/host/appservice.bicep' = {
   name: 'appservice'
   scope: resourceGroup
@@ -37,8 +65,8 @@ module web 'core/host/appservice.bicep' = {
     ftpsState: 'Disabled'
     managedIdentity: true
     appSettings: {
-      AZURE_OPENAI_CHATGPT_DEPLOYMENT: 'chatgpt'
-      AZURE_OPENAI_ENDPOINT: 'https://cog-kg52cb6gl24k4.openai.azure.com/'
+      AZURE_OPENAI_CHATGPT_DEPLOYMENT: openApiDeploymentName
+      AZURE_OPENAI_ENDPOINT: openAi.outputs.endpoint
     }
   }
 }
@@ -81,3 +109,5 @@ module openAiRoleBackend 'core/security/role.bicep' = {
 
 output WEB_URI string = 'https://${web.outputs.uri}'
 output AZURE_LOCATION string = location
+output AZURE_OPENAI_CHATGPT_DEPLOYMENT string = openApiDeploymentName
+output AZURE_OPENAI_ENDPOINT string = openAi.outputs.endpoint

@@ -33,13 +33,13 @@
             const data = JSON.stringify({message: message});
             var requestDiv = document.createElement('div');
             requestDiv.innerText = message;
-            requestDiv.classList.add("card");
-            requestDiv.classList.add("bg-info");
+            requestDiv.classList.add("message");
+            requestDiv.classList.add("from-user");
             targetContainer.appendChild(requestDiv);
 
             var responseDiv = document.createElement('div');
-            responseDiv.classList.add("card");
-            responseDiv.classList.add("bg-light");
+            responseDiv.classList.add("message");
+            responseDiv.classList.add("from-assistant");
             targetContainer.appendChild(responseDiv);
 
             eventSource = new EventSource(`/chat?message=${message}`);

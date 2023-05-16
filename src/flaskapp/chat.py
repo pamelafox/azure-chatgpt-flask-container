@@ -35,7 +35,6 @@ def chat_handler():
             stream=True,
         )
         for event in response:
-            print(event)
             if event["choices"][0]["delta"].get("content"):
                 response_message = event["choices"][0]["delta"]["content"]
                 json_data = json.dumps({"text": response_message, "sender": "assistant"})
