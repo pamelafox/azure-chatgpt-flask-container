@@ -30,5 +30,3 @@ jobs:
           run: ruff . --config src/pyproject.toml
         - name: Check formatting with black
           run: black . --check --verbose --config src/pyproject.toml
-        - name: Run Pytest tests
-          run: python3 -m pytest

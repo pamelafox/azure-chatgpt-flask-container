@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.245.0/containers/python-3
 {
-	"name": "simple-flask-api-container",
+	"name": "azure-chatgpt-flask-container",
 	"build": {
 		"dockerfile": "Dockerfile",
 		"args": {
@@ -34,18 +34,8 @@
 				"python.linting.pylintArgs": [
 					"--disable=C0114,C0115,C0116"
 				],
-				"python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
-				"python.formatting.blackPath": "/usr/local/py-utils/bin/black",
-				"python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
-				"python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
-				"python.linting.flake8Path": "/usr/local/py-utils/bin/flake8",
-				"python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
-				"python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
-				"python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
-				"python.linting.pylintPath": "/usr/local/py-utils/bin/pylint",
 				"python.testing.unittestEnabled": false,
-				"python.testing.pytestEnabled": true,
-				"workbench.startupEditor": "newUntitledFile"
+				"python.testing.pytestEnabled": true
 			}
 		}
 	},
@@ -54,7 +44,7 @@
 	"forwardPorts": [5000],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "python3 -m pip install -r src/requirements-dev.txt && pre-commit install",
+	"postCreateCommand": "python3 -m pip install -r requirements-dev.txt && pre-commit install",
 
 	// Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode"

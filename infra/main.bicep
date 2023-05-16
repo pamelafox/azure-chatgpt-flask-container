@@ -9,66 +9,75 @@ param name string
 @description('Primary location for all resources')
 param location string
 
-param apiAppExists bool = false
+@description('Id of the user or app to assign application roles')
+param principalId string = ''
 
 var resourceToken = toLower(uniqueString(subscription().id, name, location))
 var tags = { 'azd-env-name': name }
 
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: '${name}-rg'
+  name: 'rg-${name}'
   location: location
   tags: tags
 }
 
 var prefix = '${name}-${resourceToken}'
 
-
-// Container apps host (including container registry)
-module containerApps 'core/host/container-apps.bicep' = {
-  name: 'container-apps'
+module web 'core/host/appservice.bicep' = {
+  name: 'appservice'
   scope: resourceGroup
   params: {
-    name: 'app'
+    name: '${prefix}-appservice'
     location: location
-    tags: tags
-    containerAppsEnvironmentName: '${prefix}-containerapps-env'
-    containerRegistryName: '${replace(prefix, '-', '')}registry'
-    logAnalyticsWorkspaceName: logAnalyticsWorkspace.outputs.name
+    tags: union(tags, { 'azd-service-name': 'web' })
+    appServicePlanId: appServicePlan.outputs.id
+    runtimeName: 'python'
+    runtimeVersion: '3.10'
+    scmDoBuildDuringDeployment: true
+    ftpsState: 'Disabled'
+    managedIdentity: true
+    appSettings: {
+      AZURE_OPENAI_CHATGPT_DEPLOYMENT: 'chatgpt'
+      AZURE_OPENAI_ENDPOINT: 'https://cog-kg52cb6gl24k4.openai.azure.com/'
+    }
   }
 }
 
-// API app
-module api 'api.bicep' = {
-  name: 'api'
+module appServicePlan 'core/host/appserviceplan.bicep' = {
+  name: 'serviceplan'
   scope: resourceGroup
   params: {
-    name: '${take(prefix,19)}-ca'
+    name: '${prefix}-serviceplan'
     location: location
     tags: tags
-    identityName: '${prefix}-id-api'
-    containerAppsEnvironmentName: containerApps.outputs.environmentName
-    containerRegistryName: containerApps.outputs.registryName
-    exists: apiAppExists
+    sku: {
+      name: 'B1'
+      capacity: 1
+    }
+    kind: 'linux'
+  }
+}
+
+module openAiRoleUser 'core/security/role.bicep' = {
+  scope: resourceGroup
+  name: 'openai-role-user'
+  params: {
+    principalId: principalId
+    roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
+    principalType: 'User'
   }
 }
 
 
-module logAnalyticsWorkspace 'core/monitor/loganalytics.bicep' = {
-  name: 'loganalytics'
+module openAiRoleBackend 'core/security/role.bicep' = {
   scope: resourceGroup
+  name: 'openai-role-backend'
   params: {
-    name: '${prefix}-loganalytics'
-    location: location
-    tags: tags
+    principalId: web.outputs.identityPrincipalId
+    roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
+    principalType: 'ServicePrincipal'
   }
 }
 
+output WEB_URI string = 'https://${web.outputs.uri}'
 output AZURE_LOCATION string = location
-output AZURE_CONTAINER_ENVIRONMENT_NAME string = containerApps.outputs.environmentName
-output AZURE_CONTAINER_REGISTRY_NAME string = containerApps.outputs.registryName
-output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerApps.outputs.registryLoginServer
-output SERVICE_API_IDENTITY_PRINCIPAL_ID string = api.outputs.SERVICE_API_IDENTITY_PRINCIPAL_ID
-output SERVICE_API_NAME string = api.outputs.SERVICE_API_NAME
-output SERVICE_API_URI string = api.outputs.SERVICE_API_URI
-output SERVICE_API_IMAGE_NAME string = api.outputs.SERVICE_API_IMAGE_NAME
-output SERVICE_API_ENDPOINTS array = ['${api.outputs.SERVICE_API_URI}/generate_name']

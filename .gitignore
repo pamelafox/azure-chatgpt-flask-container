@@ -1,6 +1,8 @@
 
 .azure
-
+.pyc
 __pycache__/
 
 .coverage
+
+.env

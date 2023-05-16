@@ -4,8 +4,8 @@ from flask import Flask
 def create_app():
     app = Flask(__name__)
 
-    from . import generate_name  # noqa
+    from . import chat  # noqa
 
-    app.register_blueprint(generate_name.bp)
+    app.register_blueprint(chat.bp)
 
     return app
