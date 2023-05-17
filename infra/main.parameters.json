@@ -10,6 +10,9 @@
       },
       "principalId": {
         "value": "${AZURE_PRINCIPAL_ID}"
+      },
+      "acaExists": {
+        "value": "${SERVICE_ACA_RESOURCE_EXISTS=false}"
       }
     }
   }

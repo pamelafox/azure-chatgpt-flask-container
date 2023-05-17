@@ -12,6 +12,8 @@ param location string
 @description('Id of the user or app to assign application roles')
 param principalId string = ''
 
+param acaExists bool = false
+
 var resourceToken = toLower(uniqueString(subscription().id, name, location))
 var tags = { 'azd-env-name': name }
 
@@ -23,8 +25,7 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
 
 var prefix = '${name}-${resourceToken}'
 
-
-var openApiDeploymentName = 'chatgpt'
+var openAiDeploymentName = 'chatgpt'
 module openAi 'core/ai/cognitiveservices.bicep' = {
   name: 'openai'
   scope: resourceGroup
@@ -37,7 +38,7 @@ module openAi 'core/ai/cognitiveservices.bicep' = {
     }
     deployments: [
       {
-        name: openApiDeploymentName
+        name: openAiDeploymentName
         model: {
           format: 'OpenAI'
           name: 'gpt-35-turbo'
@@ -51,40 +52,47 @@ module openAi 'core/ai/cognitiveservices.bicep' = {
   }
 }
 
-module web 'core/host/appservice.bicep' = {
-  name: 'appservice'
+module logAnalyticsWorkspace 'core/monitor/loganalytics.bicep' = {
+  name: 'loganalytics'
   scope: resourceGroup
   params: {
-    name: '${prefix}-appservice'
+    name: '${prefix}-loganalytics'
     location: location
-    tags: union(tags, { 'azd-service-name': 'web' })
-    appServicePlanId: appServicePlan.outputs.id
-    runtimeName: 'python'
-    runtimeVersion: '3.10'
-    scmDoBuildDuringDeployment: true
-    ftpsState: 'Disabled'
-    managedIdentity: true
-    appSettings: {
-      AZURE_OPENAI_CHATGPT_DEPLOYMENT: openApiDeploymentName
-      AZURE_OPENAI_ENDPOINT: openAi.outputs.endpoint
-    }
+    tags: tags
   }
 }
 
-module appServicePlan 'core/host/appserviceplan.bicep' = {
-  name: 'serviceplan'
+// Container apps host (including container registry)
+module containerApps 'core/host/container-apps.bicep' = {
+  name: 'container-apps'
   scope: resourceGroup
   params: {
-    name: '${prefix}-serviceplan'
+    name: 'app'
     location: location
     tags: tags
-    sku: {
-      name: 'B1'
-      capacity: 1
-    }
-    kind: 'linux'
+    containerAppsEnvironmentName: '${prefix}-containerapps-env'
+    containerRegistryName: '${replace(prefix, '-', '')}registry'
+    logAnalyticsWorkspaceName: logAnalyticsWorkspace.outputs.name
   }
 }
+
+// Container app frontend
+module aca 'aca.bicep' = {
+  name: 'aca'
+  scope: resourceGroup
+  params: {
+    name: replace('${take(prefix,19)}-ca', '--', '-')
+    location: location
+    tags: tags
+    identityName: '${prefix}-id-aca'
+    containerAppsEnvironmentName: containerApps.outputs.environmentName
+    containerRegistryName: containerApps.outputs.registryName
+    openAiDeploymentName: openAiDeploymentName
+    openAiEndpoint: openAi.outputs.endpoint
+    exists: acaExists
+  }
+}
+
 
 module openAiRoleUser 'core/security/role.bicep' = {
   scope: resourceGroup
@@ -101,13 +109,23 @@ module openAiRoleBackend 'core/security/role.bicep' = {
   scope: resourceGroup
   name: 'openai-role-backend'
   params: {
-    principalId: web.outputs.identityPrincipalId
+    principalId: aca.outputs.SERVICE_ACA_IDENTITY_PRINCIPAL_ID
     roleDefinitionId: '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
     principalType: 'ServicePrincipal'
   }
 }
 
-output WEB_URI string = 'https://${web.outputs.uri}'
 output AZURE_LOCATION string = location
-output AZURE_OPENAI_CHATGPT_DEPLOYMENT string = openApiDeploymentName
+
+output AZURE_OPENAI_CHATGPT_DEPLOYMENT string = openAiDeploymentName
 output AZURE_OPENAI_ENDPOINT string = openAi.outputs.endpoint
+output AZURE_OPENAI_KEY string = openAi.outputs.key
+
+output SERVICE_ACA_IDENTITY_PRINCIPAL_ID string = aca.outputs.SERVICE_ACA_IDENTITY_PRINCIPAL_ID
+output SERVICE_ACA_NAME string = aca.outputs.SERVICE_ACA_NAME
+output SERVICE_ACA_URI string = aca.outputs.SERVICE_ACA_URI
+output SERVICE_ACA_IMAGE_NAME string = aca.outputs.SERVICE_ACA_IMAGE_NAME
+
+output AZURE_CONTAINER_ENVIRONMENT_NAME string = containerApps.outputs.environmentName
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerApps.outputs.registryLoginServer
+output AZURE_CONTAINER_REGISTRY_NAME string = containerApps.outputs.registryName
