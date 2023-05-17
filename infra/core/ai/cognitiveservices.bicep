@@ -10,6 +10,11 @@ param sku object = {
   name: 'S0'
 }
 
+resource account 'Microsoft.CognitiveServices/accounts@2022-10-01' existing = {
+  name: name
+}
+
+/*
 resource account 'Microsoft.CognitiveServices/accounts@2022-10-01' = {
   name: name
   location: location
@@ -32,7 +37,9 @@ resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2022-10-01
     scaleSettings: deployment.scaleSettings
   }
 }]
+*/
 
 output endpoint string = account.properties.endpoint
 output id string = account.id
 output name string = account.name
+output key string = account.listKeys().key1
