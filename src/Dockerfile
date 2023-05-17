@@ -1,5 +1,8 @@
 FROM python:3.11
 
+# dont buffer
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /code
 
 COPY requirements.txt .

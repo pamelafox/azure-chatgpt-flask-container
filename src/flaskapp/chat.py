@@ -3,7 +3,7 @@ import os
 
 import azure.identity
 import openai
-from flask import Blueprint, Response, render_template, request
+from flask import Blueprint, Response, current_app, render_template, request, stream_with_context
 
 bp = Blueprint("chat", __name__, template_folder="templates", static_folder="static")
 
@@ -32,6 +32,7 @@ def index():
 def chat_handler():
     request_message = request.args.get("message")
 
+    @stream_with_context
     def response_stream():
         response = openai.ChatCompletion.create(
             engine=os.getenv("AZURE_OPENAI_CHATGPT_DEPLOYMENT", "chatgpt"),
@@ -42,12 +43,9 @@ def chat_handler():
             stream=True,
         )
         for event in response:
-            print(event)
-            import logging
-
-            logging.info("log", event)
-            if event["choices"][0]["delta"].get("content"):
+            if event["choices"][0]["delta"].get("content") is not None:
                 response_message = event["choices"][0]["delta"]["content"]
+                current_app.logger.info("Sending '%s'", response_message)
                 json_data = json.dumps({"text": response_message, "sender": "assistant"})
                 yield f"event:message\ndata: {json_data}\n\n"
         yield "event: bye\ndata: bye-bye\n\n"

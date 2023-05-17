@@ -45,7 +45,7 @@
             eventSource = new EventSource(`/chat?message=${message}`);
             eventSource.addEventListener("message", function(e) {
                 const message = JSON.parse(e.data);
-                responseDiv.innerText += message.text;
+                responseDiv.textContent += message.text;
             });
             eventSource.addEventListener('bye', function(e) {
                 eventSource.close();
